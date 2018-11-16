@@ -1,0 +1,263 @@
+Get a feel for the data
+Before diving into our data cleaning routine, we must first understand the basic structure of the data. This involves looking at things like the class() of the data object to make sure it's what we expect (generally a data.frame) in addition to checking its dimensions with dim() and the column names with names().
+
+For the weather dataset, which is loaded in your workspace:
+Check that it's a data.frame using the function class()
+Look at the dimensions
+View the column names
+# Verify that weather is a data.frame
+class(weather)
+
+# Check the dimensions
+dim(weather)
+
+# View the column names
+names(weather)
+
+Summarize the data
+Next up is to look at some summaries of the data. This is where functions like str(), glimpse() from dplyr, and summary() come in handy.
+
+View the structure of weather using base R
+Load the dplyr package
+View the structure of weather, the dplyr way
+View a summary() of weather
+# View the structure of the data
+str(weather)
+
+# Load dplyr package
+library(dplyr)
+
+# Look at the structure using dplyr's glimpse()
+glimpse(weather)
+
+# View a summary of the data
+summary(weather)
+
+Take a closer look
+After understanding the structure of the data and looking at some brief summaries, it often helps to preview the actual data. The functions head() and tail() allow you to view the top and bottom rows of the data, respectively. Recall you'll be shown 6 rows by default, but you can alter this behavior with a second argument to the function.
+
+For the weather data:
+View the first 6 rows
+View the first 15 rows
+View the last 6 rows
+View the last 10 rows
+# View first 6 rows
+head(weather)
+
+# View first 15 rows
+head(weather, 15)
+
+# View the last 6 rows
+tail(weather)
+
+# View the last 10 rows
+tail(weather, 10)
+
+Column names are values
+The weather dataset suffers from one of the five most common symptoms of messy data: column names are values. In particular, the column names X1-X31 represent days of the month, which should really be values of a new variable called day.
+The tidyr package provides the gather()function for exactly this scenario. To remind you of how it works, we've loaded a small dataset called df in your workspace. Give the following a try in the console before attempting the instructions below.
+gather(df, time, val, t1:t3)
+
+
+Notice that gather() allows you to select multiple columns to be gathered by using the :operator.
+
+Load the tidyr package
+Call gather() on the weather data to gather columns X1-X31. The two columns created as a result should be called day and value. Save the result as weather2
+View the result with head()
+# Load the tidyr package
+library(tidyr)
+
+# Gather the columns
+weather2 <- gather(weather, day, value, X1:X31, na.rm = TRUE)
+
+# View the head
+head(weather2)
+
+Values are variable names
+Our data suffer from a second common symptom of messy data: values are variable names. Specifically, values in the measure column should be variables (i.e. column names) in our dataset.
+The spread() function from tidyr is designed to help with this. To remind you of how this function works, we've loaded another small dataset called df2 (which is the result of applying gather() to the original df from last exercise). Give the following a try before attempting the instructions below.
+spread(df2, time, val)
+
+
+Note how the values of the time column now become column names.
+
+Using the code provided, remove the first column of weather2, assigning to without_x.
+Spread the measure column of without_x and save the result to weather3
+View the result with head()
+## The tidyr package is already loaded
+
+# First remove column of row names
+without_x <- weather2[, -1]
+
+# Spread the data
+weather3 <- spread(without_x, measure, value)
+
+# View the head
+head(weather3)
+
+Clean up dates
+Now that the weather dataset adheres to tidy data principles, the next step is to prepare it for analysis. We'll start by combining the year, month, and day columns and recoding the resulting character column as a date. We can use a combination of base R, stringr, and lubridate to accomplish this task.
+
+Load the stringr and lubridate packages
+Use stringr's str_replace() to remove the Xs from the day column of weather3
+Create a new column called date. Use the unite()function from tidyr to paste together the year, month, and day columns in order, using - as a separator (see ?unite if you need help)
+Coerce the date column using the appropriate function from lubridate
+Use the code provided (select()) to reorder columns, saving the result to weather5
+View the head of weather5
+## tidyr and dplyr are already loaded
+
+# Load the stringr and lubridate packages
+library(stringr)
+library(lubridate)
+
+# Remove X's from day column
+weather3$day <- str_replace(weather3$day, "X", "")
+
+# Unite the year, month, and day columns
+weather4 <- unite(weather3, date, year, month, day, sep = "-")
+
+# Convert date column to proper date format using lubridates's ymd()
+weather4$date <- ymd(weather4$date)
+
+# Rearrange columns using dplyr's select()
+weather5 <- select(weather4, date, Events, CloudCover:WindDirDegrees)
+
+# View the head of weather5
+head(weather5)
+
+A closer look at column types
+It's important for analysis that variables are coded appropriately. This is not yet the case with our weather data. Recall that functions such as as.numeric() and as.character() can be used to coerce variables into different types.
+It's important to keep in mind that coercions are not always successful, particularly if there's some data in a column that you don't expect. For example, the following will cause problems:
+as.numeric(c(4, 6.44, "some string", 222))
+
+
+If you run the code above in the console, you'll get a warning message saying that R introduced an NA in the process of coercing to numeric. This is because it doesn't know how to make a number out of a string ("some string"). Watch out for this in our weather data!
+
+
+Use str() to see how variables are stored in weather5
+View the first 20 rows of weather5. Keep an eye out for strange values!
+Try coercing the PrecipitationIn column of weather5 to numeric without saving the result
+
+# View the structure of weather5
+str(weather5)
+
+# Examine the first 20 rows of weather5. Are most of the characters numeric?
+head(weather5, 20)
+
+# See what happens if we try to convert PrecipitationIn to numeric
+as.numeric(weather5$PrecipitationIn)
+
+Column type conversions
+As you saw in the last exercise, "T" was used to denote a traceamount (i.e. too small to be accurately measured) of precipitation in the PrecipitationIn column. In order to coerce this column to numeric, you'll need to deal with this somehow. To keep things simple, we will just replace "T"with zero, as a string ("0").
+
+
+Use str_replace() from stringr to make the proper replacements in the PrecipitationIn column of weather5
+Run the call to mutate_at as-is to conveniently apply as.numeric() to all columns from CloudCover through WindDirDegrees (reading left to right in the data), saving the result to weather6
+View the structure of weather6 to confirm the coercions were successful
+## The dplyr and stringr packages are already loaded
+
+# Replace "T" with "0" (T = trace)
+weather5$PrecipitationIn <- str_replaceweather5$PrecipitationIn, "T", "0")
+
+# Convert characters to numerics
+weather6 <- mutate_at(weather5, vars(CloudCover:WindDirDegrees), funs(as.numeric))
+
+# Look at result
+str(weather6)
+
+Find missing values
+Before dealing with missing values in the data, it's important to find them and figure out why they exist in the first place. If your dataset is too big to look at all at once, like it is here, remember you can use sum() and is.na() to quickly size up the situation by counting the number of NA values.
+The summary() function may also come in handy for identifying which variables contain the missing values. Finally, the which() function is useful for locating the missing values within a particular column.
+
+Use sum() and is.na() to count the number of NAvalues in weather6
+Look at a summary() of weather6 to figure out how the missings are distributed among the different variables
+Use which() to identify the indices (i.e. row numbers) where Max.Gust.SpeedMPH is NA and save the result to ind (for indices)
+Use ind to look at the full rows of weather6 for which Max.Gust.SpeedMPH is missing
+# Count missing values
+sum(is.na(weather6))
+
+# Find missing values
+summary(weather6)
+
+# Find indices of NAs in Max.Gust.SpeedMPH
+ind <- which(is.na(weather6$Max.Gust.SpeedMPH))
+
+# Look at the full rows for records missing Max.Gust.SpeedMPH
+weather6[ind, ]
+
+An obvious error
+Besides missing values, we want to know if there are values in the data that are too extreme or bizarre to be plausible. A great way to start the search for these values is with summary().
+Once implausible values are identified, they must be dealt with in an intelligent and informed way. Sometimes the best way forward is obvious and other times it may require some research and/or discussions with the original collectors of the data.
+
+View a summary() of weather6
+Use which() to find the index of the erroneous element of weather6$Max.Humidity, saving the result to ind
+Use ind to look at the full row of weather6 for that day
+You discover an extra zero was accidentally added to this value. Correct it in the data
+# Review distributions for all variables
+summary(weather6)
+
+# Find row with Max.Humidity of 1000
+ind <- which(weather6$Max.Humidity == 1000, arr.ind=TRUE)
+
+# Look at the data for that day
+weather6[ind, ]
+
+# Change 1000 to 100
+weather6$Max.Humidity[ind] <- 100
+
+Another obvious error
+You've discovered and repaired one obvious error in the data, but it appears that there's another. Sometimes you get lucky and can infer the correct or intended value from the other data. For example, if you know the minimum and maximum values of a particular metric on a given day...
+
+Use summary() to look at the value of only the Mean.VisibilityMilesvariable of weather6
+Determine the element of the value that is clearly erroneous in this column, saving the result to ind
+Use ind to look at the full row of weather6 for this day
+Inspect the values of other variables for this day to determine the correct value of Mean.VisibilityMiles, then make the appropriate fix
+
+
+# Look at summary of Mean.VisibilityMiles
+summary(weather6$Mean.VisibilityMiles)
+
+# Get index of row with -1 value
+ind <- which(weather6$Mean.VisibilityMiles == -1)
+
+# Look at full row
+weather6[ind, ]
+
+# Set Mean.VisibilityMiles to the appropriate value
+weather6$Mean.VisibilityMiles[ind] <- 10
+
+Check other extreme values
+In addition to dealing with obvious errors in the data, we want to see if there are other extreme values. In addition to the trusty summary() function, hist() is useful for quickly getting a feel for how different variables are distributed.
+
+Check a summary() of weather6 one more time for extreme or unexpected values
+View a histogram for MeanDew.PointF
+Do the same for Min.TemperatureF
+And once more for Mean.TemperatureF to compare distributions
+
+# Review summary of full data once more
+summary(weather6)
+
+# Look at histogram for MeanDew.PointF
+hist(weather6$MeanDew.PointF)
+
+# Look at histogram for Min.TemperatureF
+hist(weather6$Min.TemperatureF)
+
+# Compare to histogram for Mean.TemperatureF
+hist(weather6$Mean.TemperatureF)
+
+Finishing touches
+Before officially calling our weather data clean, we want to put a couple of finishing touches on the data. These are a bit more subjective and may not be necessary for analysis, but they will make the data easier for others to interpret, which is generally a good thing.
+There are a number of stylistic conventions in the R language. Depending on who you ask, these conventions may vary. Because the period (.) has special meaning in certain situations, we generally recommend using underscores (_) to separate words in variable names. We also prefer all lowercase letters so that no one has to remember which letters are uppercase or lowercase.
+Finally, the events column (renamed to be all lowercase in the first instruction) contains an empty string ("") for any day on which there was no significant weather event such as rain, fog, a thunderstorm, etc. However, if it's the first time you're seeing these data, it may not be obvious that this is the case, so it's best for us to be explicit and replace the empty strings with something more meaningful.
+
+We've created a vector of column names in your workspace called new_colnames, all of which obey the conventions described above. Clean up the column names of weather6 by assigning new_colnames to names(weather6)
+Replace all empty strings in the events column of weather6with "None"
+One last time, print out the first 6 rows of the weather6 data frame to see the changes
+# Clean up column names
+names(weather6) <- new_colnames                                                
+# Replace empty cells in events column
+weather6$events[weather6$events == ""] <- "None"
+    
+# Print the first 6 rows of weather6
+head(weather6)
